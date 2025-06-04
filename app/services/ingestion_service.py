@@ -3,15 +3,17 @@ from fastapi import UploadFile, HTTPException
 from io import BytesIO
 from app.core.azure_service_client import AzureOpenAIClient
 from app.core.config.config import Config
+from app.utils.parser import parse_expense_file
 # import fitz  # PyMuPDF
 # from paddleocr import PaddleOCR
 # ocr_engine = PaddleOCR(use_angle_cls=True, lang='en')  # You can replace with any OCR engine
 
 
 async def handle_expense_upload(file: UploadFile):
-    print("API Key:", Config.AZURE_OPENAI_API_KEY)  # Debug statement
     try:
-        df = pd.read_csv(BytesIO(await file.read()))
+        # Read and parse the file using your parser
+        file_bytes = await file.read()
+        df = parse_expense_file(file_bytes, file.filename)
         extracted_content = " ".join(df.astype(str).apply(lambda x: " ".join(x), axis=1))
         
         # Simple character-based chunking
