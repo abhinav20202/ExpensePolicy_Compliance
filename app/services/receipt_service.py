@@ -26,7 +26,7 @@ async def handle_receipt_batch(files: list[UploadFile]):
                     images = convert_from_bytes(content)
                     text = "\n".join(pytesseract.image_to_string(img) for img in images)
 
-            elif filename.endswith((".jpg", ".jpeg", ".png", ".bmp", ".tiff")):
+            elif filename.endswith((".jpg", ".jpeg", ".png", ".bmp", ".tiff","jfif")):
                 image = Image.open(io.BytesIO(content)).convert("RGB")
                 text = pytesseract.image_to_string(image)
 

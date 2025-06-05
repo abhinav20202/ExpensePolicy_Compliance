@@ -8,7 +8,6 @@ class AzureOpenAIClient:
             api_version=Config.AZURE_OPENAI_API_VERSION,
             azure_endpoint=Config.AZURE_OPENAI_ENDPOINT
         )
-        print("API Key:", Config.AZURE_OPENAI_API_KEY)
  
     def generate_embedding(self, text: str):
         response = self.client.embeddings.create(
