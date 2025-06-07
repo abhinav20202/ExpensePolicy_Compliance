@@ -18,14 +18,16 @@ async def check_compliance_api(
 
     # Step 2: Get policy vectors
     policy_data = await handle_policy_upload(policy_file)
-
+    
     # Step 3: Get receipt vectors
     receipt_data = await handle_receipt_batch(receipt_files)
     print(f"Receipt Data: {receipt_data}")
+
     receipt_vector =[r["embedding"] for r in receipt_data["data"]]
     print(f"Receipt Vectors: {receipt_vector}")
+
     # Step 4: Run compliance check
-    report = check_compliance(
+    report = await check_compliance(
         expense_vectors=expense_data["record_vectors"],
         receipt_vectors=[r["embedding"] for r in receipt_data["data"]],
         policy_vectors=policy_data["chunk_vectors"],
@@ -38,7 +40,8 @@ async def check_compliance_api(
         expense_amounts=expense_data["receipt_amounts"],
         # receipt_amount=receipt_data["amounts"]
         receipt_amounts = [r["amount"] for r in receipt_data["data"]],  # Use .get() to avoid KeyError
-        # receipt_amounts = receipt_data.get("amount", None)  # Use .get() to avoid KeyError        
+        # receipt_amounts = receipt_data.get("amount", None)  # Use .get() to avoid KeyError
+        policy_chunks=policy_data["chunks"]        
     )
 
     return {"status": "success", "report": report}

@@ -37,7 +37,7 @@ async def run_llm_compliance_check(record_data: dict, policy_chunks: list[str]) 
     - "Compliant"
     - "Non-compliant: <reason and which policy is violated>"
     """
-    explanation = await azure_client.generate_text(prompt)
+    explanation =  azure_client.generate_completion(prompt)
     return {
         "record_id": record_data.get("receipt_id"),
         "compliance_result": explanation.strip()
@@ -53,6 +53,7 @@ async def check_compliance(
     receipt_names: list,
     expense_amounts: list,
     receipt_amounts: list,
+    policy_chunks: list,
     threshold: float = 0.8
 ) -> list:
     """
@@ -80,7 +81,7 @@ async def check_compliance(
         receipt_amount = receipt_amounts[i] if i < len(receipt_amounts) else None
         expense_amount = expense_amounts[i] if i < len(expense_amounts) else None
         receipt_vector = receipt_vectors[i] if receipt_attached and i < len(receipt_vectors) else None
-
+        policy_chunks = policy_chunks if policy_chunks else []
         # Check if receipt_id, receipt_name, receipt_amount, and expense_amount match
         if receipt_id == receipt_name and receipt_amount == expense_amount:
             # Prepare record_data for LLM compliance check
@@ -90,16 +91,20 @@ async def check_compliance(
                 "receipt_amount": receipt_amount,
                 "expense_amount": expense_amount
             }
-
+            try:
             # Call the LLM compliance check function
-            llm_result = await run_llm_compliance_check(record_data, policy_vectors)
-
+                llm_result = await run_llm_compliance_check(record_data, policy_chunks)
+                print(f"LLM Result: {llm_result}")  # Debugging log
+                compliance_result = llm_result.get("compliance_result", "Error: No result returned")
+            except Exception as e:
+                llm_result = {"compliance_result": f"Error: {str(e)}"}
+                compliance_result = f"Error: {str(e)}"
             report.append({
-                "Record_ID": record_id,
-                "Receipt_ID": receipt_id,
-                "Compliance": llm_result["compliance_result"].split(":")[0].strip(),
-                "Explanation": llm_result["compliance_result"]
-            })
+    "Record_ID": record_id,
+    "Receipt_ID": receipt_id,
+    "Compliance": llm_result.get("compliance_result", "Error: No result returned").split(":")[0].strip(),
+    "Explanation": llm_result.get("compliance_result", "Error: No result returned")
+})
             continue
 
         # Handle cases where fields do not match
