@@ -17,6 +17,7 @@ from fastapi import APIRouter, UploadFile, File
 router = APIRouter()
 @router.post("/expense")
 async def upload_expense(file: UploadFile = File(...)):
+   print("request Reached")
    return await handle_expense_upload(file)
 
 
@@ -24,11 +25,13 @@ async def upload_expense(file: UploadFile = File(...)):
 @router.post("/policy")
 async def upload_policy(file: UploadFile = File(...)):
    return await handle_policy_upload(file)
-
-
+ 
+ 
 @router.post("/receipts")
-async def upload_receipts(files: List[UploadFile] = File(...)):
-   return await handle_receipt_batch(files)
+async def upload_receipts(file: UploadFile = File(...)):  # Accept a single file
+    print("Processing receipt upload...")
+    return await handle_receipt_batch([file])  # Pass the file directly
+ 
 
 
 

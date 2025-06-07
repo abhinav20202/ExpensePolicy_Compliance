@@ -13,18 +13,26 @@ async def handle_expense_upload(file: UploadFile):
         azure_service_client = AzureOpenAIClient()
         record_vectors = []
         record_ids = []
+        receipt_flags = []
+        receipt_amounts = []
+        receipt_ids=[]
 
         for _, row in df.iterrows():
             record_text = " ".join(map(str, row.values))
             embedding = azure_service_client.generate_embedding(record_text)
             record_vectors.append(embedding)
             record_ids.append(row["ID"])  # assuming 'ID' is the unique identifier
-
+            receipt_flags.append(row.get("Receipt_Attached", False))  # assuming 'Receipt Flag' is optional
+            receipt_amounts.append(row["Amount"])  # Assuming 'Amount' is the column name
+            receipt_ids.append(row.get("Receipt_ID", None))  # Assuming 'Receipt_ID' is optional
         return {
             "status": "success",
             "record_count": len(record_vectors),
             "record_vectors": record_vectors,
-            "record_ids": record_ids
+            "record_ids": record_ids,
+            "receipt_flags": receipt_flags,
+            "receipt_amounts": receipt_amounts,
+            "receipt_ids": receipt_ids
         }
 
     except Exception as e:
