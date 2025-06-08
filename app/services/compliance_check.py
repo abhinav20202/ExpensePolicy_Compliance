@@ -54,6 +54,7 @@ async def check_compliance(
     expense_amounts: list,
     receipt_amounts: list,
     policy_chunks: list,
+    categories: list,
     threshold: float = 0.8
 ) -> list:
     """
@@ -82,17 +83,26 @@ async def check_compliance(
         expense_amount = expense_amounts[i] if i < len(expense_amounts) else None
         receipt_vector = receipt_vectors[i] if receipt_attached and i < len(receipt_vectors) else None
         policy_chunks = policy_chunks if policy_chunks else []
-        # Check if receipt_id, receipt_name, receipt_amount, and expense_amount match
-        if receipt_id == receipt_name and receipt_amount == expense_amount:
+        category = categories[i] if categories and i < len(categories) else None
+        # category = categories[i] if categories and isinstance(categories, list) and i < len(categories) else "Unknown"
+        print(f"Record {i}: Category = {categories}")
+
+        print(f"length of categories: {len(categories)}")  # Debugging log
+        print(f"length of expense_amounts: {len(expense_amounts)}")  # Debugging log
+        print(f"length of receipt_names: {len(receipt_names)}")  # Debugging log
+        print(f"catefory and expense amount: {category} and {expense_amount}")  # Debugging log
+        # Check if all conditions match
+        if receipt_attached and receipt_id == receipt_name and receipt_amount == expense_amount:
             # Prepare record_data for LLM compliance check
             record_data = {
                 "receipt_id": receipt_id,
                 "receipt_name": receipt_name,
                 "receipt_amount": receipt_amount,
-                "expense_amount": expense_amount
+                "expense_amount": expense_amount,
+                "categories": category
             }
             try:
-            # Call the LLM compliance check function
+                # Call the LLM compliance check function
                 llm_result = await run_llm_compliance_check(record_data, policy_chunks)
                 print(f"LLM Result: {llm_result}")  # Debugging log
                 compliance_result = llm_result.get("compliance_result", "Error: No result returned")
@@ -100,62 +110,148 @@ async def check_compliance(
                 llm_result = {"compliance_result": f"Error: {str(e)}"}
                 compliance_result = f"Error: {str(e)}"
             report.append({
-    "Record_ID": record_id,
-    "Receipt_ID": receipt_id,
-    "Compliance": llm_result.get("compliance_result", "Error: No result returned").split(":")[0].strip(),
-    "Explanation": llm_result.get("compliance_result", "Error: No result returned")
-})
+                "Record_ID": record_id,
+                "Receipt_ID": receipt_id,
+                "Compliance": llm_result.get("compliance_result", "Error: No result returned").split(":")[0].strip(),
+                "Explanation": llm_result.get("compliance_result", "Error: No result returned")
+            })
             continue
 
         # Handle cases where fields do not match
-        if receipt_attached:
-            if receipt_name != receipt_id:
-                report.append({
-                    "Record_ID": record_id,
-                    "Receipt_ID": receipt_id,
-                    "Compliance": "Non-compliant",
-                    "Explanation": f"Receipt name mismatch: Expected {receipt_id}, got {receipt_name}."
-                })
-                continue
-
-            if receipt_amount != expense_amount:
-                report.append({
-                    "Record_ID": record_id,
-                    "Receipt_ID": receipt_id,
-                    "Compliance": "Non-compliant",
-                    "Explanation": f"Amount mismatch for Receipt_ID {receipt_id} and Receipt_Name {receipt_name}: Expected {expense_amount}, got {receipt_amount}."
-                })
-                continue
-
-        receipt_vector = np.mean(receipt_vector, axis=0) if receipt_vector and isinstance(receipt_vector[0], list) else receipt_vector
-        record_score = max(cosine_similarity([expense_vector], policy_vectors)[0])
-        receipt_score = (
-            max(cosine_similarity([receipt_vector], policy_vectors)[0])
-            if receipt_vector is not None and receipt_vector.size > 0 else 0.0
-        )
-
-        # Determine compliance
+        mismatches = []
         if not receipt_attached:
-            compliance = "Non-compliant"
-            explanation = "Receipt is missing, which violates the policy requirement."
-        elif record_score < threshold or receipt_score < threshold:
-            compliance = "Non-compliant"
-            explanation = (
-                "The receipt or record does not align with the policy based on semantic similarity."
-            )
-        else:
-            compliance = "Compliant"
-            explanation = "The receipt and record align with the policy."
+            mismatches.append("Receipt is not attached.")
+        if receipt_name != receipt_id:
+            mismatches.append(f"Receipt name mismatch: Expected {receipt_id}, got {receipt_name}.")
+        if receipt_amount != expense_amount:
+            mismatches.append(f"Amount mismatch: Expected {expense_amount}, got {receipt_amount}.")
 
         report.append({
             "Record_ID": record_id,
-            "Compliance": compliance,
-            "Similarity_Score_Record": round(record_score, 3),
-            "Similarity_Score_Receipt": round(receipt_score, 3),
-            "Explanation": explanation
+            "Receipt_ID": receipt_id,
+            "Compliance": "Non-compliant",
+            "Explanation": " | ".join(mismatches)
         })
 
     return report
+
+# async def check_compliance(
+#     expense_vectors: list,
+#     receipt_vectors: list,
+#     policy_vectors: list,
+#     record_ids: list,
+#     receipt_flags: list,
+#     receipt_ids: list,
+#     receipt_names: list,
+#     expense_amounts: list,
+#     receipt_amounts: list,
+#     policy_chunks: list,
+#     categories: list,
+#     threshold: float = 0.8
+# ) -> list:
+#     """
+#     Compares each expense record and its corresponding receipt (if attached)
+#     against the policy vectors using cosine similarity.
+
+#     Args:
+#         expense_vectors: List of embeddings for each expense record.
+#         receipt_vectors: List of embeddings for each receipt (same order as records).
+#         policy_vectors: List of policy chunk embeddings.
+#         record_ids: List of record IDs (e.g., EXP00001).
+#         receipt_flags: List of booleans indicating if a receipt is attached.
+#         threshold: Similarity threshold for compliance.
+
+#     Returns:
+#         List of compliance results with explanations.
+#     """
+#     report = []
+
+#     for i, record_id in enumerate(record_ids):
+#         expense_vector = expense_vectors[i]
+#         receipt_attached = receipt_flags[i]
+#         receipt_id = receipt_ids[i] if i < len(receipt_ids) else None
+#         receipt_name = receipt_names[i] if i < len(receipt_names) else None
+#         receipt_amount = receipt_amounts[i] if i < len(receipt_amounts) else None
+#         expense_amount = expense_amounts[i] if i < len(expense_amounts) else None
+#         receipt_vector = receipt_vectors[i] if receipt_attached and i < len(receipt_vectors) else None
+#         policy_chunks = policy_chunks if policy_chunks else []
+#         categories = categories[i] if categories and i < len(categories) else None
+#         print(f"catefory and expense amount: {categories} and {expense_amount}")  # Debugging log
+#         # Check if receipt_id, receipt_name, receipt_amount, and expense_amount match
+#         if receipt_id == receipt_name and receipt_amount == expense_amount:
+#             # Prepare record_data for LLM compliance check
+#             record_data = {
+#                 "receipt_id": receipt_id,
+#                 "receipt_name": receipt_name,
+#                 "receipt_amount": receipt_amount,
+#                 "expense_amount": expense_amount,
+#                 "categories": categories
+#             }
+#             try:
+#             # Call the LLM compliance check function
+#                 llm_result = await run_llm_compliance_check(record_data, policy_chunks)
+#                 print(f"LLM Result: {llm_result}")  # Debugging log
+#                 compliance_result = llm_result.get("compliance_result", "Error: No result returned")
+#             except Exception as e:
+#                 llm_result = {"compliance_result": f"Error: {str(e)}"}
+#                 compliance_result = f"Error: {str(e)}"
+#             report.append({
+#     "Record_ID": record_id,
+#     "Receipt_ID": receipt_id,
+#     "Compliance": llm_result.get("compliance_result", "Error: No result returned").split(":")[0].strip(),
+#     "Explanation": llm_result.get("compliance_result", "Error: No result returned")
+# })
+#             continue
+
+#         # Handle cases where fields do not match
+#         if receipt_attached:
+#             if receipt_name != receipt_id:
+#                 report.append({
+#                     "Record_ID": record_id,
+#                     "Receipt_ID": receipt_id,
+#                     "Compliance": "Non-compliant",
+#                     "Explanation": f"Receipt name mismatch: Expected {receipt_id}, got {receipt_name}."
+#                 })
+#                 continue
+
+#             if receipt_amount != expense_amount:
+#                 report.append({
+#                     "Record_ID": record_id,
+#                     "Receipt_ID": receipt_id,
+#                     "Compliance": "Non-compliant",
+#                     "Explanation": f"Amount mismatch for Receipt_ID {receipt_id} and Receipt_Name {receipt_name}: Expected {expense_amount}, got {receipt_amount}."
+#                 })
+#                 continue
+
+#         receipt_vector = np.mean(receipt_vector, axis=0) if receipt_vector and isinstance(receipt_vector[0], list) else receipt_vector
+#         record_score = max(cosine_similarity([expense_vector], policy_vectors)[0])
+#         receipt_score = (
+#             max(cosine_similarity([receipt_vector], policy_vectors)[0])
+#             if receipt_vector is not None and receipt_vector.size > 0 else 0.0
+#         )
+
+#         # Determine compliance
+#         if not receipt_attached:
+#             compliance = "Non-compliant"
+#             explanation = "Receipt is missing, which violates the policy requirement."
+#         elif record_score < threshold or receipt_score < threshold:
+#             compliance = "Non-compliant"
+#             explanation = (
+#                 "The receipt or record does not align with the policy based on semantic similarity."
+#             )
+#         else:
+#             compliance = "Compliant"
+#             explanation = "The receipt and record align with the policy."
+
+#         report.append({
+#             "Record_ID": record_id,
+#             "Compliance": compliance,
+#             "Similarity_Score_Record": round(record_score, 3),
+#             "Similarity_Score_Receipt": round(receipt_score, 3),
+#             "Explanation": explanation
+#         })
+
+#     return report
  
 # def check_compliance(
 #     expense_vectors: list,

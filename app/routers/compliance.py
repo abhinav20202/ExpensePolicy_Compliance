@@ -15,7 +15,7 @@ async def check_compliance_api(
 ):
     # Step 1: Get expense vectors
     expense_data = await handle_expense_upload(expense_file)
-
+    print(f"Categories Data: {expense_data['categories']}")
     # Step 2: Get policy vectors
     policy_data = await handle_policy_upload(policy_file)
     
@@ -41,7 +41,8 @@ async def check_compliance_api(
         # receipt_amount=receipt_data["amounts"]
         receipt_amounts = [r["amount"] for r in receipt_data["data"]],  # Use .get() to avoid KeyError
         # receipt_amounts = receipt_data.get("amount", None)  # Use .get() to avoid KeyError
-        policy_chunks=policy_data["chunks"]        
+        policy_chunks=policy_data["chunks"],
+        categories=expense_data['categories']   
     )
 
     return {"status": "success", "report": report}

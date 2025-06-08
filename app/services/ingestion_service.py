@@ -16,6 +16,7 @@ async def handle_expense_upload(file: UploadFile):
         receipt_flags = []
         receipt_amounts = []
         receipt_ids=[]
+        categories = []
 
         for _, row in df.iterrows():
             record_text = " ".join(map(str, row.values))
@@ -25,6 +26,7 @@ async def handle_expense_upload(file: UploadFile):
             receipt_flags.append(row.get("Receipt_Attached", False))  # assuming 'Receipt Flag' is optional
             receipt_amounts.append(row["Amount"])  # Assuming 'Amount' is the column name
             receipt_ids.append(row.get("Receipt_ID", None))  # Assuming 'Receipt_ID' is optional
+            categories.append(row["Category"])  # Assuming 'Category' is optional
         return {
             "status": "success",
             "record_count": len(record_vectors),
@@ -32,7 +34,8 @@ async def handle_expense_upload(file: UploadFile):
             "record_ids": record_ids,
             "receipt_flags": receipt_flags,
             "receipt_amounts": receipt_amounts,
-            "receipt_ids": receipt_ids
+            "receipt_ids": receipt_ids,
+            "categories": categories
         }
 
     except Exception as e:
