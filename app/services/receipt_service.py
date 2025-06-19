@@ -22,10 +22,10 @@ async def handle_receipt_batch(files: list[UploadFile]):
     azure_client = AzureOpenAIClient()
     results = []
 
-    for file in files:
+    for file in files:  # Iterate over each UploadFile object in the list
         try:
-            content = await file.read()
-            filename = file.filename
+            content = await file.read()  # Read the content of the file
+            filename = file.filename  # Access the filename attribute
             print(f"Processing file: {filename}")
 
             if filename.endswith((".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".tiff", "jfif")):
@@ -54,15 +54,6 @@ async def handle_receipt_batch(files: list[UploadFile]):
                 text = "\n".join(extracted_data)
                 print("Combined Extracted text:\n", text)  # Log first 100 characters
 
-                # # Extract Receipt_ID and Amount using regex functions
-                # receipt_id = extract_receipt_id(text)
-                # amount = extract_amount(text)
-
-                # if not receipt_id or not amount:
-                #     raise ValueError("Failed to extract Receipt_ID or Amount from the receipt.")
-
-                # print(f"Extracted Receipt_ID: {receipt_id}, Amount: {amount}")
-
             else:
                 raise ValueError("Unsupported file format. Please upload PDF or image files.")
 
@@ -73,7 +64,6 @@ async def handle_receipt_batch(files: list[UploadFile]):
             print(filename)
 
             # Generate embedding
-            # embedding = azure_client.generate_embedding(text)
             chunk_embeddings = [azure_client.generate_embedding(chunk) for chunk in chunks]
             results.append({
                 "filename": os.path.splitext(filename)[0],
@@ -84,7 +74,7 @@ async def handle_receipt_batch(files: list[UploadFile]):
 
         except Exception as e:
             results.append({
-                "filename": file.filename,
+                #"filename": filename,
                 "error": str(e)
             })
 

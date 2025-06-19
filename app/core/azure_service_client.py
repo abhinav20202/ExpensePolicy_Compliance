@@ -21,6 +21,6 @@ class AzureOpenAIClient:
             model=Config.AZURE_OPENAI_DEPLOYMENT_NAME,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
-            temperature=0.3
+            temperature=0.1
         )
         return response.choices[0].message.content

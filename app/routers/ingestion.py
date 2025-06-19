@@ -28,9 +28,9 @@ async def upload_policy(file: UploadFile = File(...)):
  
  
 @router.post("/receipts")
-async def upload_receipts(file: UploadFile = File(...)):  # Accept a single file
+async def upload_receipts(files: List[UploadFile] = File(...)):  # Accept a single file
     print("Processing receipt upload...")
-    return await handle_receipt_batch([file])  # Pass the file directly
+    return await handle_receipt_batch(files)  # Pass the file directly
  
 
 
