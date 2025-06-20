@@ -3,6 +3,7 @@ import fitz  # PyMuPDF
 import docx
 from io import BytesIO
 from app.core.azure_service_client import AzureOpenAIClient
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 def extract_text_from_pdf_bytes(file_bytes: bytes) -> str:
     text = ""
@@ -14,9 +15,6 @@ def extract_text_from_pdf_bytes(file_bytes: bytes) -> str:
 def extract_text_from_docx_bytes(file_bytes: bytes) -> str:
     doc = docx.Document(BytesIO(file_bytes))
     return "\n".join([para.text for para in doc.paragraphs])
-
-def chunk_text(text, chunk_size=1000):
-    return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
 def embed_chunks(chunks):
     azure_service_client = AzureOpenAIClient()
@@ -32,8 +30,12 @@ async def handle_policy_upload(file: UploadFile):
             text = extract_text_from_docx_bytes(file_bytes)
         else:
             raise ValueError("Unsupported file format. Please upload a PDF or DOCX file.")
+      
+        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+            model_name="gpt-4", chunk_size=200, chunk_overlap=50, separators='\n\n'
+        )
 
-        chunks = chunk_text(text)
+        chunks = text_splitter.split_text(text)
         chunk_vectors = embed_chunks(chunks)
 
         return {

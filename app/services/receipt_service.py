@@ -81,7 +81,8 @@ async def handle_receipt_batch(files: list[UploadFile]):
     return {
         "status": "success",
         "receipts_processed": len(results),
-        "data": results
+        "data": results,
+        "chunk":len(chunks)
     }
 # async def handle_receipt_batch(files: list[UploadFile]):
 #     print("Processing batch of receipt files...")
@@ -137,7 +138,7 @@ async def handle_receipt_batch(files: list[UploadFile]):
 #         "receipts_processed": len(results),
 #         "data": results
 #     }
-def chunk_text(text: str, chunk_size: int = 1000) -> list:
+def chunk_text(text: str, chunk_size: int = 500) -> list:
     """
     Splits the input text into smaller chunks of the specified size.
 
